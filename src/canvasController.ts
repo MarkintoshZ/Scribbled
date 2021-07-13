@@ -47,7 +47,9 @@ export class CanvasController {
     this.renderer.strokeContinue(point, lastPoint);
   }
 
-  private handlePointerUpAndLeave() {
+  private handlePointerUpAndLeave(e: PointerEvent) {
+    if (!this.toolDown) return;
+    this.handlePointerMove(e);
     this.toolDown = false;
     this.boardData.add(this.strokeConstructor.strokeComplete());
   }
@@ -63,7 +65,6 @@ export class CanvasController {
   }
 
   private calculatePressure(rawPressure: number): number {
-    console.log(rawPressure);
     return rawPressure * 50 + this.toolBox.selectedTool.size;
   }
 }

@@ -83,7 +83,7 @@ export class StrokeBuilder {
   }
 
   public strokeComplete(): Stroke {
-    if (!this.stroke)
+    if (this.stroke === null)
       throw new Error('Cannot complete stroke before stroke start is called');
     // TODO: calculate AABB
     const stroke = this.stroke;

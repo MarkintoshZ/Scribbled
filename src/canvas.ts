@@ -81,7 +81,7 @@ export class Canvas {
     this.setHeight(height || 0);
   }
 
-  toDataURL(mimeType: string, quality?: any): string {
+  toDataURL(mimeType: string, quality?: unknown): string {
     try {
       // If this call fails (due to browser bug, like in Firefox 3.6),
       // then revert to previous no-parameter image/png behavior

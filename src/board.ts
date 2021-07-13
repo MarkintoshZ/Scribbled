@@ -11,7 +11,7 @@ interface IBoardConfig {
 }
 
 /**
- * Board to sketch and draw on
+ * Scribbled Board to sketch and draw on
  */
 export class Board {
   private canvasContainer: HTMLElement;

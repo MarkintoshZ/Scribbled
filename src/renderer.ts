@@ -72,14 +72,6 @@ export class Renderer implements IRenderer {
     fr: number,
     color: string,
   ) {
-    console.log({
-      tx,
-      ty,
-      tr,
-      fx,
-      fy,
-      fr,
-    });
     ctx.fillStyle = color;
     const angle = Math.atan((ty - fy) / (tx - fx));
     ctx.beginPath();
