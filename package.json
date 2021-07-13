@@ -1,0 +1,21 @@
+{
+  "name": "written",
+  "version": "1.0.0",
+  "description": "Canvas-based freehand drawing and writing library",
+  "main": "index.ts",
+  "author": "Mark Zhang",
+  "license": "MIT",
+  "private": false,
+  "scripts": {
+    "dev": "rollup -cw"
+  },
+  "devDependencies": {
+    "@rollup/plugin-typescript": "^8.1.0",
+    "@typescript-eslint/eslint-plugin": "^4.28.3",
+    "@typescript-eslint/parser": "^4.28.3",
+    "eslint": "^7.30.0",
+    "rollup": "^2.36.1",
+    "ts-loader": "^8.0.14",
+    "typescript": "^4.1.3"
+  }
+}

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <script src='../build/bundle.js'></script>
+  <style>
+    #app {
+      display: flex;
+      justify-content: center;
+    }
+
+    #container {
+      display: inline-block;
+      border: 1px solid #000;
+      padding: 0px;
+      margin: 0px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id='app'>
+    <div id='container'></div>
+  </div>
+  <script>
+    new written.Board({
+      container: 'container',
+      width: 1000,
+      height: 800,
+    })
+  </script>
+</body>
+
+</html>
