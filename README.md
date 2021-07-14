@@ -6,7 +6,7 @@
 
 ## Install
 
-### Node.js:  
+### Node.js:
 ```bash
 npm install scribbled
 ```
@@ -15,9 +15,9 @@ or
 yarn add scribbled
 ```
 
-### Directly in Frontend:  
+### Directly in Frontend:
 ```html
-<script src="https://cdn.jsdelivr.net/npm/scribbled@0.0.1/dist/scribbled.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/MarkintoshZ/Scribbled@latest/dist/scribbled.min.js">
 ```
 ```javascript
 new scribbled.Board({
