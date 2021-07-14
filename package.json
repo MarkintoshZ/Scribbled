@@ -3,9 +3,18 @@
   "version": "0.0.1",
   "description": "A Modular and Customizable Sketchpad on the Web",
   "main": "index.ts",
-  "author": "Mark Zhang",
+  "author": {
+    "name": "Mark Zhang",
+    "email": "markintoshzzz@gmail.com",
+    "url": "https://www.linkedin.com/in/mark-zhang-zzx/"
+  },
   "license": "MIT",
   "private": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/monatheoctocat/my_package.git"
+  },
+  "keywords": ["Sketching", "Drawing", "Handwriting"],
   "scripts": {
     "dev": "rollup -cw"
   },
