@@ -1,6 +1,6 @@
 import { AABB, Point, Stroke } from './types';
 
-export interface IBoardData {
+export interface ICanvasData {
   add(stroke: Stroke): void;
   delete(color: string): void;
   set(stroke: Stroke): void;
@@ -13,7 +13,7 @@ export interface IBoardData {
  * Stores all Strokes
  * - Implementation of IBoardData with HashMap 
  */
-export class BoardData implements IBoardData {
+export class CanvasData implements ICanvasData {
   private strokes: Map<string, Stroke> = new Map();
 
   add(stroke: Stroke): void {
@@ -86,6 +86,11 @@ export class StrokeBuilder {
     if (this.stroke === null)
       throw new Error('Cannot complete stroke before stroke start is called');
     // TODO: calculate AABB
+    // calculate max and min x
+    this.stroke.aabb = new AABB(
+      { x: Math.min(...this.stroke.x), y: Math.min(...this.stroke.y) },
+      { x: Math.max(...this.stroke.x), y: Math.max(...this.stroke.y) },
+    );
     const stroke = this.stroke;
     this.stroke = null;
     return stroke;

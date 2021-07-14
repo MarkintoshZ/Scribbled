@@ -2,93 +2,97 @@ interface ICanvas {
   width?: number;
   height?: number;
   pixelRatio?: number;
+  antialiased?: boolean;
 }
 
 export class Canvas {
-  private canvas: HTMLCanvasElement;
-  private context: CanvasRenderingContext2D
-  private pixelRatio: number;
-  private width: number;
-  private height: number;
+  private _canvas: HTMLCanvasElement;
+  private _context: CanvasRenderingContext2D
+  private _pixelRatio: number;
+  private _width: number;
+  private _height: number;
 
   constructor(config: ICanvas) {
-    this.canvas = document.createElement('canvas');
-    this.context = this.canvas.getContext('2d');
+    this._canvas = document.createElement('canvas');
+    this._context = this._canvas.getContext('2d');
 
     // set inline styles
-    this.canvas.style.padding = '0';
-    this.canvas.style.margin = '0';
-    this.canvas.style.background = 'transparent';
+    this._canvas.style.padding = '0';
+    this._canvas.style.margin = '0';
+    this._canvas.style.background = 'transparent';
 
     // Set css size
-    this.canvas.style.width = config.width + 'px';
-    this.canvas.style.height = config.height + 'px';
+    this._canvas.style.width = config.width + 'px';
+    this._canvas.style.height = config.height + 'px';
 
     // Set canvas size
     const scale = window.devicePixelRatio;
-    this.canvas.width = Math.floor(config.width * scale);
-    this.canvas.height = Math.floor(config.height * scale);
+    this._canvas.width = Math.floor(config.width * scale);
+    this._canvas.height = Math.floor(config.height * scale);
 
     // Normalize coordinate system to use css pixels.
-    this.context.scale(scale, scale);
+    this._context.scale(scale, scale);
 
-    this.pixelRatio = window.devicePixelRatio;
-    this.width = config.width;
-    this.height = config.height;
+    // set antialiased for hit canvas
+    this.canvasCtx['imageSmoothingEnabled'] = config.antialiased;
+
+    this._pixelRatio = window.devicePixelRatio;
+    this._width = config.width;
+    this._height = config.height;
   }
 
   getCanvas(): HTMLCanvasElement {
-    return this.canvas;
+    return this._canvas;
   }
 
-  getContext(): CanvasRenderingContext2D {
-    return this.context;
+  get canvasCtx(): CanvasRenderingContext2D {
+    return this._context;
   }
 
   getPixelRatio(): number {
-    return this.pixelRatio;
+    return this._pixelRatio;
   }
 
-  setWidth(width: number): void {
-    // take into account pixel ratio
-    this.width = this.canvas.width = width * this.pixelRatio;
-    this.canvas.style.width = width + 'px';
+  get width(): number {
+    return this._width;
+  }
 
-    const pixelRatio = this.pixelRatio,
-      _context = this.getContext();
+  set width(width: number) {
+    // take into account pixel ratio
+    this._width = this._canvas.width = width * this._pixelRatio;
+    this._canvas.style.width = width + 'px';
+
+    const pixelRatio = this._pixelRatio,
+      _context = this.canvasCtx;
     _context.scale(pixelRatio, pixelRatio);
   }
 
-  setHeight(height: number): void {
+  get height(): number {
+    return this._height;
+  }
+
+  set height(height: number) {
     // take into account pixel ratio
-    this.height = this.canvas.height = height * this.pixelRatio;
-    this.canvas.style.height = height + 'px';
-    const pixelRatio = this.pixelRatio,
-      _context = this.getContext();
+    this._height = this._canvas.height = height * this._pixelRatio;
+    this._canvas.style.height = height + 'px';
+    const pixelRatio = this._pixelRatio,
+      _context = this.canvasCtx;
     _context.scale(pixelRatio, pixelRatio);
   }
 
-  getWidth(): number {
-    return this.width;
-  }
-
-  getHeight(): number {
-    return this.height;
-  }
-
-  setSize(width: number, height: number): void {
-    this.setWidth(width || 0);
-    this.setHeight(height || 0);
+  setSize(width?: number, height?: number): void {
+    this.width = width || this.width;
+    this.height = height || this.height;
   }
 
   toDataURL(mimeType: string, quality?: unknown): string {
     try {
       // If this call fails (due to browser bug, like in Firefox 3.6),
       // then revert to previous no-parameter image/png behavior
-      return this.canvas.toDataURL(mimeType, quality);
+      return this._canvas.toDataURL(mimeType, quality);
     } catch (e) {
       try {
-        return this.canvas.toDataURL();
+        return this._canvas.toDataURL();
       } catch (err) {
         return '';
       }

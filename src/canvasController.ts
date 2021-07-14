@@ -1,17 +1,19 @@
-import { IBoardData, StrokeBuilder } from './boardData';
+import { ICanvasData, StrokeBuilder } from './canvasData';
 import { IRenderer } from './renderer';
-import { ToolBox } from './tools';
+import { Tool, ToolBox, ToolType } from './tools';
 import { Point } from './types';
 
 export class CanvasController {
   // states
   private toolDown = false;
   private strokeConstructor: StrokeBuilder;
+  // To prevent switching tool in the middle of a stroke
+  private currentTool: Tool;
 
   constructor(
     private canvas: HTMLCanvasElement,
     private renderer: IRenderer,
-    private boardData: IBoardData,
+    private boardData: ICanvasData,
     private toolBox: ToolBox,
   ) {
     this.strokeConstructor = new StrokeBuilder();
@@ -31,6 +33,9 @@ export class CanvasController {
 
   private handlePointerDown(e: PointerEvent) {
     this.toolDown = true;
+    this.currentTool = this.toolBox.selectedTool;
+    if (this.currentTool.type === ToolType.Eraser)
+      return this.erase(e.offsetX, e.offsetY);
     const point: Point = this.createPoint(e);
     this.strokeConstructor.strokeStart(point);
     this.renderer.strokeStart(point);
@@ -38,12 +43,14 @@ export class CanvasController {
 
   private handlePointerMove(e: PointerEvent) {
     if (!this.toolDown) return;
+    if (this.currentTool.type === ToolType.Eraser)
+      return this.erase(e.offsetX, e.offsetY);
     const lastPoint = this.strokeConstructor.strokeContinue(
       e.offsetX,
       e.offsetY,
       this.calculatePressure(e.pressure),
     );
-    const point = this.createPoint(e);
+    const point = this.createPoint(e, lastPoint.hitColor);
     this.renderer.strokeContinue(point, lastPoint);
   }
 
@@ -51,20 +58,25 @@ export class CanvasController {
     if (!this.toolDown) return;
     this.handlePointerMove(e);
     this.toolDown = false;
+    this.currentTool = null;
     this.boardData.add(this.strokeConstructor.strokeComplete());
   }
 
-  private createPoint(e: PointerEvent): Point {
+  private erase(x: number, y: number): void {
+
+  }
+
+  private createPoint(e: PointerEvent, hitColor?: string): Point {
     return {
       x: e.offsetX,
       y: e.offsetY,
       pressure: this.calculatePressure(e.pressure),
-      color: this.toolBox.selectedTool.color,
-      hitColor: this.boardData.genHitColor(),
+      color: this.currentTool.color,
+      hitColor: hitColor || this.boardData.genHitColor(),
     };
   }
 
   private calculatePressure(rawPressure: number): number {
-    return rawPressure * 50 + this.toolBox.selectedTool.size;
+    return rawPressure * this.currentTool.pressureSensitivity + this.currentTool.size;
   }
 }

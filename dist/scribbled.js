@@ -3,59 +3,60 @@ var scribbled = (function (exports) {
 
     class Canvas {
         constructor(config) {
-            this.canvas = document.createElement('canvas');
-            this.context = this.canvas.getContext('2d');
-            this.canvas.style.padding = '0';
-            this.canvas.style.margin = '0';
-            this.canvas.style.background = 'transparent';
-            this.canvas.style.width = config.width + 'px';
-            this.canvas.style.height = config.height + 'px';
+            this._canvas = document.createElement('canvas');
+            this._context = this._canvas.getContext('2d');
+            this._canvas.style.padding = '0';
+            this._canvas.style.margin = '0';
+            this._canvas.style.background = 'transparent';
+            this._canvas.style.width = config.width + 'px';
+            this._canvas.style.height = config.height + 'px';
             const scale = window.devicePixelRatio;
-            this.canvas.width = Math.floor(config.width * scale);
-            this.canvas.height = Math.floor(config.height * scale);
-            this.context.scale(scale, scale);
-            this.pixelRatio = window.devicePixelRatio;
-            this.width = config.width;
-            this.height = config.height;
+            this._canvas.width = Math.floor(config.width * scale);
+            this._canvas.height = Math.floor(config.height * scale);
+            this._context.scale(scale, scale);
+            this.canvasCtx['imageSmoothingEnabled'] = config.antialiased;
+            this._pixelRatio = window.devicePixelRatio;
+            this._width = config.width;
+            this._height = config.height;
         }
         getCanvas() {
-            return this.canvas;
+            return this._canvas;
         }
-        getContext() {
-            return this.context;
+        get canvasCtx() {
+            return this._context;
         }
         getPixelRatio() {
-            return this.pixelRatio;
+            return this._pixelRatio;
         }
-        setWidth(width) {
-            this.width = this.canvas.width = width * this.pixelRatio;
-            this.canvas.style.width = width + 'px';
-            const pixelRatio = this.pixelRatio, _context = this.getContext();
+        get width() {
+            return this._width;
+        }
+        set width(width) {
+            this._width = this._canvas.width = width * this._pixelRatio;
+            this._canvas.style.width = width + 'px';
+            const pixelRatio = this._pixelRatio, _context = this.canvasCtx;
             _context.scale(pixelRatio, pixelRatio);
         }
-        setHeight(height) {
-            this.height = this.canvas.height = height * this.pixelRatio;
-            this.canvas.style.height = height + 'px';
-            const pixelRatio = this.pixelRatio, _context = this.getContext();
+        get height() {
+            return this._height;
+        }
+        set height(height) {
+            this._height = this._canvas.height = height * this._pixelRatio;
+            this._canvas.style.height = height + 'px';
+            const pixelRatio = this._pixelRatio, _context = this.canvasCtx;
             _context.scale(pixelRatio, pixelRatio);
-        }
-        getWidth() {
-            return this.width;
-        }
-        getHeight() {
-            return this.height;
         }
         setSize(width, height) {
-            this.setWidth(width || 0);
-            this.setHeight(height || 0);
+            this.width = width || this.width;
+            this.height = height || this.height;
         }
         toDataURL(mimeType, quality) {
             try {
-                return this.canvas.toDataURL(mimeType, quality);
+                return this._canvas.toDataURL(mimeType, quality);
             }
             catch (e) {
                 try {
-                    return this.canvas.toDataURL();
+                    return this._canvas.toDataURL();
                 }
                 catch (err) {
                     return '';
@@ -74,8 +75,8 @@ var scribbled = (function (exports) {
     })(ToolType || (ToolType = {}));
     class ToolBox {
         constructor(tools = [
-            { type: ToolType.Brush, color: '#000', size: 1 },
-            { type: ToolType.Eraser, size: 1 },
+            { type: ToolType.Brush, color: '#000', size: 1, pressureSensitivity: 50, triggerKey: 'Shift+KeyP' },
+            { type: ToolType.Eraser, triggerKey: 'Shift+KeyE' },
         ]) {
             this.selectedIdx = 0;
             this.tools = tools;
@@ -91,7 +92,22 @@ var scribbled = (function (exports) {
         }
     }
 
-    class BoardData {
+    class AABB {
+        constructor(topLeft, bottomRight) {
+            this.topLeft = topLeft;
+            this.bottomRight = bottomRight;
+        }
+        overlap(other) {
+            return (this.topLeft.x <= other.bottomRight.x &&
+                this.bottomRight.x >= other.topLeft.x &&
+                this.topLeft.y <= other.bottomRight.y &&
+                this.bottomRight.y >= other.topLeft.y);
+        }
+        get width() { return this.bottomRight.x - this.topLeft.x; }
+        get height() { return this.topLeft.y - this.bottomRight.y; }
+    }
+
+    class CanvasData {
         constructor() {
             this.strokes = new Map();
         }
@@ -153,6 +169,7 @@ var scribbled = (function (exports) {
         strokeComplete() {
             if (this.stroke === null)
                 throw new Error('Cannot complete stroke before stroke start is called');
+            this.stroke.aabb = new AABB({ x: Math.min(...this.stroke.x), y: Math.min(...this.stroke.y) }, { x: Math.max(...this.stroke.x), y: Math.max(...this.stroke.y) });
             const stroke = this.stroke;
             this.stroke = null;
             return stroke;
@@ -180,6 +197,9 @@ var scribbled = (function (exports) {
         }
         handlePointerDown(e) {
             this.toolDown = true;
+            this.currentTool = this.toolBox.selectedTool;
+            if (this.currentTool.type === ToolType.Eraser)
+                return this.erase(e.offsetX, e.offsetY);
             const point = this.createPoint(e);
             this.strokeConstructor.strokeStart(point);
             this.renderer.strokeStart(point);
@@ -187,8 +207,10 @@ var scribbled = (function (exports) {
         handlePointerMove(e) {
             if (!this.toolDown)
                 return;
+            if (this.currentTool.type === ToolType.Eraser)
+                return this.erase(e.offsetX, e.offsetY);
             const lastPoint = this.strokeConstructor.strokeContinue(e.offsetX, e.offsetY, this.calculatePressure(e.pressure));
-            const point = this.createPoint(e);
+            const point = this.createPoint(e, lastPoint.hitColor);
             this.renderer.strokeContinue(point, lastPoint);
         }
         handlePointerUpAndLeave(e) {
@@ -196,19 +218,22 @@ var scribbled = (function (exports) {
                 return;
             this.handlePointerMove(e);
             this.toolDown = false;
+            this.currentTool = null;
             this.boardData.add(this.strokeConstructor.strokeComplete());
         }
-        createPoint(e) {
+        erase(x, y) {
+        }
+        createPoint(e, hitColor) {
             return {
                 x: e.offsetX,
                 y: e.offsetY,
                 pressure: this.calculatePressure(e.pressure),
-                color: this.toolBox.selectedTool.color,
-                hitColor: this.boardData.genHitColor(),
+                color: this.currentTool.color,
+                hitColor: hitColor || this.boardData.genHitColor(),
             };
         }
         calculatePressure(rawPressure) {
-            return rawPressure * 50 + this.toolBox.selectedTool.size;
+            return rawPressure * this.currentTool.pressureSensitivity + this.currentTool.size;
         }
     }
 
@@ -251,6 +276,39 @@ var scribbled = (function (exports) {
         }
     }
 
+    class ToolBoxController {
+        constructor(toolBox) {
+            this.toolBox = toolBox;
+            document.addEventListener('keydown', this.handleKeyDown.bind(this));
+            document.addEventListener('keyup', this.handleKeyUp.bind(this));
+        }
+        dispose() {
+            document.removeEventListener('keydown', this.handleKeyDown.bind(this));
+            document.removeEventListener('keyup', this.handleKeyUp.bind(this));
+        }
+        handleKeyDown(e) {
+        }
+        handleKeyUp(e) {
+            this.toolBox.tools.forEach((tool, idx) => {
+                if (tool.triggerKey) {
+                    const keys = tool.triggerKey.split('+').map(key => key.trim());
+                    const key = keys[keys.length - 1];
+                    const ctrl = keys.includes('Ctrl');
+                    const shift = keys.includes('Shift');
+                    const option = keys.includes('Option') || keys.includes('Alt');
+                    console.log({ e, key, ctrl, shift, option });
+                    if (e.code === key &&
+                        e.ctrlKey === ctrl &&
+                        e.shiftKey === shift &&
+                        e.altKey === option) {
+                        this.toolBox.setToolByIdx(idx);
+                        console.log(`set tool to ${this.toolBox.selectedTool}`);
+                    }
+                }
+            });
+        }
+    }
+
     class Board {
         constructor({ container, width = 640, height = 400 }) {
             const containerElement = (typeof container === 'string') ?
@@ -264,14 +322,17 @@ var scribbled = (function (exports) {
             this.canvasContainer.style.cursor = 'crosshair';
             containerElement.appendChild(this.canvasContainer);
             this.canvas = new Canvas({ width, height });
-            this.hitCanvas = new Canvas({ width, height });
-            this.canvasContainer.appendChild(this.canvas.getCanvas());
+            this.hitCanvas = new Canvas({ width, height, antialiased: false });
+            this.canvas.attachDom(this.canvasContainer);
+            this.hitCanvas.attachDom(this.canvasContainer);
             this.toolBox = new ToolBox();
-            this.boardData = new BoardData();
-            this.canvasController = new CanvasController(this.canvas.getCanvas(), new Renderer(this.canvas.getContext(), this.hitCanvas.getContext()), this.boardData, this.toolBox);
+            this.boardData = new CanvasData();
+            this.canvasController = new CanvasController(this.canvas.getCanvas(), new Renderer(this.canvas.canvasCtx, this.hitCanvas.canvasCtx), this.boardData, this.toolBox);
+            this.toolBoxController = new ToolBoxController(this.toolBox);
         }
         dispose() {
             this.canvasController.dispose();
+            this.toolBoxController.dispose();
         }
         getHeight() { return this.height; }
         getWidth() { return this.width; }

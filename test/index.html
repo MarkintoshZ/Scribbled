@@ -5,7 +5,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Document</title>
-  <script src='../build/bundle.js'></script>
+  <script src='../dist/scribbled.js'></script>
+  <!-- <script src="https://cdn.jsdelivr.net/npm/scribbled@0.0.1/dist/scribbled.min.js"></script> -->
+  <!-- <script src="https://cdn.jsdelivr.net/gh/MarkintoshZ/Scribbled@latest/dist/scribbled.min.js"> -->
+  </script>
   <style>
     #app {
       display: flex;
@@ -13,7 +16,8 @@
     }
 
     #container {
-      display: inline-block;
+      display: flex;
+      flex-direction: row;
       border: 1px solid #000;
       padding: 0px;
       margin: 0px;
@@ -28,8 +32,8 @@
   <script>
     new scribbled.Board({
       container: 'container',
-      width: 1000,
-      height: 800,
+      // width: 1000,
+      // height: 800,
     })
   </script>
 </body>
