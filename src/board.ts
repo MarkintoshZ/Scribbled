@@ -9,6 +9,7 @@ interface IBoardConfig {
   container: string | HTMLElement;
   width: number;
   height: number;
+  toolBox: ToolBox;
 }
 
 /**
@@ -24,7 +25,7 @@ export class Board {
   private canvasController: CanvasController;
   private toolBoxController: ToolBoxController;
 
-  private boardData: CanvasData;
+  private canvasData: CanvasData;
   private toolBox: ToolBox
 
   /**
@@ -32,8 +33,14 @@ export class Board {
    * @param ref either an id or a HTMLCanvasElement
    * @param width width in pixels
    * @param height height in pixels
+   * @param toolBox ToolBox object that specifies what tools are available 
    */
-  constructor({ container, width = 640, height = 400 }: IBoardConfig) {
+  constructor({
+    container,
+    width = 640,
+    height = 400,
+    toolBox = new ToolBox()
+  }: IBoardConfig) {
     // get container
     const containerElement = (typeof container === 'string') ?
       document.getElementById(container) : container;
@@ -52,19 +59,19 @@ export class Board {
 
     // canvas setup
     this.canvas = new Canvas({ width, height });
-    this.hitCanvas = new Canvas({ width, height, antialiased: false });
+    this.hitCanvas = new Canvas({ width, height });
     this.canvas.attachDom(this.canvasContainer);
-    this.hitCanvas.attachDom(this.canvasContainer);
+    // this.hitCanvas.attachDom(this.canvasContainer);
 
     // initiate states
-    this.toolBox = new ToolBox();
-    this.boardData = new CanvasData();
+    this.toolBox = toolBox;
+    this.canvasData = new CanvasData();
 
     // add event listeners
     this.canvasController = new CanvasController(
       this.canvas.getCanvas(),
       new Renderer(this.canvas.canvasCtx, this.hitCanvas.canvasCtx),
-      this.boardData,
+      this.canvasData,
       this.toolBox,
     );
     this.toolBoxController = new ToolBoxController(this.toolBox);

@@ -1,7 +1,7 @@
 import { ICanvasData, StrokeBuilder } from './canvasData';
 import { IRenderer } from './renderer';
 import { Tool, ToolBox, ToolType } from './tools';
-import { Point } from './types';
+import { Point, StyledPoint } from './types';
 
 export class CanvasController {
   // states
@@ -34,45 +34,60 @@ export class CanvasController {
   private handlePointerDown(e: PointerEvent) {
     this.toolDown = true;
     this.currentTool = this.toolBox.selectedTool;
+    const point = this.createStyledPoint(e);
+
     if (this.currentTool.type === ToolType.Eraser)
-      return this.erase(e.offsetX, e.offsetY);
-    const point: Point = this.createPoint(e);
+      return this.erase(point);
+
     this.strokeConstructor.strokeStart(point);
     this.renderer.strokeStart(point);
   }
 
   private handlePointerMove(e: PointerEvent) {
+    // console.log({ x: e.offsetX, y: e.offsetY });
     if (!this.toolDown) return;
+    const point = this.createPoint(e);
+
     if (this.currentTool.type === ToolType.Eraser)
-      return this.erase(e.offsetX, e.offsetY);
-    const lastPoint = this.strokeConstructor.strokeContinue(
-      e.offsetX,
-      e.offsetY,
-      this.calculatePressure(e.pressure),
-    );
-    const point = this.createPoint(e, lastPoint.hitColor);
-    this.renderer.strokeContinue(point, lastPoint);
+      return this.erase(point);
+
+    const [lastPoint, { color, hitColor }] = this.strokeConstructor.strokeContinue(point);
+    this.renderer.strokeContinue({ from: lastPoint, to: point, color, hitColor });
   }
 
   private handlePointerUpAndLeave(e: PointerEvent) {
     if (!this.toolDown) return;
-    this.handlePointerMove(e);
+    if (this.currentTool.type !== ToolType.Eraser) {
+      this.handlePointerMove(e);
+      this.boardData.add(this.strokeConstructor.strokeComplete());
+    }
     this.toolDown = false;
     this.currentTool = null;
-    this.boardData.add(this.strokeConstructor.strokeComplete());
   }
 
-  private erase(x: number, y: number): void {
-
+  private erase(point: Point): void {
+    const color = this.renderer.getHitCvsColor(point);
+    if (!this.boardData.get(color)) return;
+    const aabb = this.boardData.get(color).aabb;
+    this.renderer.clearRect(aabb);
+    this.boardData.delete(color);
+    const strokesNeedRepainting = this.boardData.getOverlap(aabb);
+    strokesNeedRepainting.forEach(s => this.renderer.strokeRender(s));
   }
 
-  private createPoint(e: PointerEvent, hitColor?: string): Point {
+  private createPoint(e: PointerEvent): Point {
     return {
       x: e.offsetX,
       y: e.offsetY,
-      pressure: this.calculatePressure(e.pressure),
+      radius: this.calculatePressure(e.pressure),
+    };
+  }
+
+  private createStyledPoint(e: PointerEvent): StyledPoint {
+    return {
+      ...this.createPoint(e),
       color: this.currentTool.color,
-      hitColor: hitColor || this.boardData.genHitColor(),
+      hitColor: this.boardData.genHitColor(),
     };
   }
 

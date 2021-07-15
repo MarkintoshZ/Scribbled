@@ -14,7 +14,6 @@ var scribbled = (function (exports) {
             this._canvas.width = Math.floor(config.width * scale);
             this._canvas.height = Math.floor(config.height * scale);
             this._context.scale(scale, scale);
-            this.canvasCtx['imageSmoothingEnabled'] = config.antialiased;
             this._pixelRatio = window.devicePixelRatio;
             this._width = config.width;
             this._height = config.height;
@@ -75,8 +74,8 @@ var scribbled = (function (exports) {
     })(ToolType || (ToolType = {}));
     class ToolBox {
         constructor(tools = [
-            { type: ToolType.Brush, color: '#000', size: 1, pressureSensitivity: 50, triggerKey: 'Shift+KeyP' },
-            { type: ToolType.Eraser, triggerKey: 'Shift+KeyE' },
+            { type: ToolType.Brush, color: '#000', size: 1, pressureSensitivity: 50, triggerKey: 'KeyP' },
+            { type: ToolType.Eraser, triggerKey: 'KeyE' },
         ]) {
             this.selectedIdx = 0;
             this.tools = tools;
@@ -94,17 +93,32 @@ var scribbled = (function (exports) {
 
     class AABB {
         constructor(topLeft, bottomRight) {
-            this.topLeft = topLeft;
-            this.bottomRight = bottomRight;
+            this.x = topLeft.x;
+            this.y = topLeft.y;
+            this.width = bottomRight.x - topLeft.x;
+            this.height = bottomRight.y - topLeft.y;
         }
         overlap(other) {
-            return (this.topLeft.x <= other.bottomRight.x &&
-                this.bottomRight.x >= other.topLeft.x &&
-                this.topLeft.y <= other.bottomRight.y &&
-                this.bottomRight.y >= other.topLeft.y);
+            return (this.x <= other.x + other.width &&
+                this.y <= other.y + other.height &&
+                this.x + this.width >= other.x &&
+                this.y + this.height >= other.y);
         }
-        get width() { return this.bottomRight.x - this.topLeft.x; }
-        get height() { return this.topLeft.y - this.bottomRight.y; }
+        union(other) {
+            return new AABB({
+                x: Math.min(this.x, other.x),
+                y: Math.min(this.y, other.y)
+            }, {
+                x: Math.max(this.x + this.width, other.x + this.width),
+                y: Math.max(this.y + this.height, other.y + other.height)
+            });
+        }
+        expand(px) {
+            this.x -= px;
+            this.y -= px;
+            this.width += 2 * px;
+            this.height += 2 * px;
+        }
     }
 
     class CanvasData {
@@ -122,6 +136,9 @@ var scribbled = (function (exports) {
         set(stroke) {
             this.strokes.set(stroke.hitColor, stroke);
         }
+        get(color) {
+            return this.strokes.get(color);
+        }
         checkOverlap(aabb) {
             for (const stroke of this.strokes.values()) {
                 if (stroke.aabb.overlap(aabb))
@@ -135,32 +152,33 @@ var scribbled = (function (exports) {
         genHitColor() {
             let randomColor;
             do {
-                randomColor = '#' + Math.floor(Math.random() * 16777215).toString(16);
+                randomColor = '#' + (Math.random() * 0xFFFFFF << 0).toString(16).padStart(6, '0');
             } while (this.strokes.has(randomColor));
             return randomColor;
         }
     }
     class StrokeBuilder {
-        strokeContinue(x, y, pressure) {
+        strokeContinue({ x, y, radius: pressure }) {
             if (!this.stroke)
                 return;
             this.stroke.x.push(x);
             this.stroke.y.push(y);
-            this.stroke.pressure.push(pressure);
+            this.stroke.radius.push(pressure);
             const l = this.stroke.x.length;
-            return {
-                x: this.stroke.x[l - 2],
-                y: this.stroke.y[l - 2],
-                pressure: this.stroke.pressure[l - 2],
-                color: this.stroke.color,
-                hitColor: this.stroke.hitColor,
-            };
+            return [{
+                    x: this.stroke.x[l - 2],
+                    y: this.stroke.y[l - 2],
+                    radius: this.stroke.radius[l - 2],
+                }, {
+                    color: this.stroke.color,
+                    hitColor: this.stroke.hitColor,
+                }];
         }
-        strokeStart({ x, y, pressure, color, hitColor }) {
+        strokeStart({ x, y, radius: pressure, color, hitColor }) {
             this.stroke = {
                 x: [x],
                 y: [y],
-                pressure: [pressure],
+                radius: [pressure],
                 color: color,
                 hitColor: hitColor,
                 aabb: null
@@ -170,6 +188,8 @@ var scribbled = (function (exports) {
             if (this.stroke === null)
                 throw new Error('Cannot complete stroke before stroke start is called');
             this.stroke.aabb = new AABB({ x: Math.min(...this.stroke.x), y: Math.min(...this.stroke.y) }, { x: Math.max(...this.stroke.x), y: Math.max(...this.stroke.y) });
+            const maxPressure = Math.max(...this.stroke.radius);
+            this.stroke.aabb.expand(maxPressure + 3);
             const stroke = this.stroke;
             this.stroke = null;
             return stroke;
@@ -198,38 +218,53 @@ var scribbled = (function (exports) {
         handlePointerDown(e) {
             this.toolDown = true;
             this.currentTool = this.toolBox.selectedTool;
+            const point = this.createStyledPoint(e);
             if (this.currentTool.type === ToolType.Eraser)
-                return this.erase(e.offsetX, e.offsetY);
-            const point = this.createPoint(e);
+                return this.erase(point);
             this.strokeConstructor.strokeStart(point);
             this.renderer.strokeStart(point);
         }
         handlePointerMove(e) {
             if (!this.toolDown)
                 return;
+            const point = this.createPoint(e);
             if (this.currentTool.type === ToolType.Eraser)
-                return this.erase(e.offsetX, e.offsetY);
-            const lastPoint = this.strokeConstructor.strokeContinue(e.offsetX, e.offsetY, this.calculatePressure(e.pressure));
-            const point = this.createPoint(e, lastPoint.hitColor);
-            this.renderer.strokeContinue(point, lastPoint);
+                return this.erase(point);
+            const [lastPoint, { color, hitColor }] = this.strokeConstructor.strokeContinue(point);
+            this.renderer.strokeContinue({ from: lastPoint, to: point, color, hitColor });
         }
         handlePointerUpAndLeave(e) {
             if (!this.toolDown)
                 return;
-            this.handlePointerMove(e);
+            if (this.currentTool.type !== ToolType.Eraser) {
+                this.handlePointerMove(e);
+                this.boardData.add(this.strokeConstructor.strokeComplete());
+            }
             this.toolDown = false;
             this.currentTool = null;
-            this.boardData.add(this.strokeConstructor.strokeComplete());
         }
-        erase(x, y) {
+        erase(point) {
+            const color = this.renderer.getHitCvsColor(point);
+            if (!this.boardData.get(color))
+                return;
+            const aabb = this.boardData.get(color).aabb;
+            this.renderer.clearRect(aabb);
+            this.boardData.delete(color);
+            const strokesNeedRepainting = this.boardData.getOverlap(aabb);
+            strokesNeedRepainting.forEach(s => this.renderer.strokeRender(s));
         }
-        createPoint(e, hitColor) {
+        createPoint(e) {
             return {
                 x: e.offsetX,
                 y: e.offsetY,
-                pressure: this.calculatePressure(e.pressure),
+                radius: this.calculatePressure(e.pressure),
+            };
+        }
+        createStyledPoint(e) {
+            return {
+                ...this.createPoint(e),
                 color: this.currentTool.color,
-                hitColor: hitColor || this.boardData.genHitColor(),
+                hitColor: this.boardData.genHitColor(),
             };
         }
         calculatePressure(rawPressure) {
@@ -242,20 +277,33 @@ var scribbled = (function (exports) {
             this.canvasCtx = canvasCtx;
             this.hitCanvasCtx = hitCanvasCtx;
         }
+        getHitCvsColor({ x, y }) {
+            const data = this.hitCanvasCtx.getImageData(x, y, 1, 1).data;
+            return '#' + ('000000' + this.rgbToHex(data[0], data[1], data[2])).slice(-6);
+        }
+        rgbToHex(r, g, b) {
+            if (r > 255 || g > 255 || b > 255)
+                throw 'Invalid color component';
+            return ((r << 16) | (g << 8) | b).toString(16);
+        }
+        clearRect(rect) {
+            this.canvasCtx.clearRect(rect.x, rect.y, rect.width, rect.height);
+            this.hitCanvasCtx.clearRect(rect.x, rect.y, rect.width, rect.height);
+        }
         strokeStart(point) {
             this.drawCircle(this.canvasCtx, point.color, point);
-            this.drawCircle(this.hitCanvasCtx, point.hitColor, point);
+            this.drawCircle(this.hitCanvasCtx, point.hitColor, { ...point, radius: Math.max(2, point.radius) });
         }
         drawCircle(ctx, color, point) {
             ctx.fillStyle = color;
             ctx.beginPath();
-            ctx.ellipse(point.x, point.y, point.pressure, point.pressure, 0, 0, Math.PI * 2);
+            ctx.ellipse(point.x, point.y, point.radius, point.radius, 0, 0, Math.PI * 2);
             ctx.closePath();
             ctx.fill();
         }
-        strokeContinue(point, lastPoint) {
-            this.paintLine(this.canvasCtx, point.x, point.y, point.pressure, lastPoint.x, lastPoint.y, lastPoint.pressure, point.color);
-            this.paintLine(this.hitCanvasCtx, point.x, point.y, point.pressure, lastPoint.x, lastPoint.y, lastPoint.pressure, point.hitColor);
+        strokeContinue({ from, to, color, hitColor }) {
+            this.paintLine(this.canvasCtx, to.x, to.y, to.radius, from.x, from.y, from.radius, color);
+            this.paintLine(this.hitCanvasCtx, to.x, to.y, Math.max(to.radius, 2), from.x, from.y, Math.max(from.radius, 2), hitColor);
         }
         paintLine(ctx, tx, ty, tr, fx, fy, fr, color) {
             ctx.fillStyle = color;
@@ -272,7 +320,24 @@ var scribbled = (function (exports) {
             ctx.closePath();
             ctx.fill();
         }
-        strokeRender(stroke) {
+        strokeRender({ x, y, radius: pressure, color, hitColor }) {
+            console.log('render stroke!!');
+            this.strokeStart({ x: x[0], y: y[0], radius: pressure[0], color, hitColor });
+            for (let i = 0; i < x.length; i++) {
+                this.strokeContinue({
+                    from: {
+                        x: x[i - 1],
+                        y: y[i - 1],
+                        radius: pressure[i - 1],
+                    },
+                    to: {
+                        x: x[i],
+                        y: y[i],
+                        radius: pressure[i],
+                    },
+                    color, hitColor
+                });
+            }
         }
     }
 
@@ -310,7 +375,7 @@ var scribbled = (function (exports) {
     }
 
     class Board {
-        constructor({ container, width = 640, height = 400 }) {
+        constructor({ container, width = 640, height = 400, toolBox = new ToolBox() }) {
             const containerElement = (typeof container === 'string') ?
                 document.getElementById(container) : container;
             if (!containerElement) {
@@ -322,12 +387,11 @@ var scribbled = (function (exports) {
             this.canvasContainer.style.cursor = 'crosshair';
             containerElement.appendChild(this.canvasContainer);
             this.canvas = new Canvas({ width, height });
-            this.hitCanvas = new Canvas({ width, height, antialiased: false });
+            this.hitCanvas = new Canvas({ width, height });
             this.canvas.attachDom(this.canvasContainer);
-            this.hitCanvas.attachDom(this.canvasContainer);
-            this.toolBox = new ToolBox();
-            this.boardData = new CanvasData();
-            this.canvasController = new CanvasController(this.canvas.getCanvas(), new Renderer(this.canvas.canvasCtx, this.hitCanvas.canvasCtx), this.boardData, this.toolBox);
+            this.toolBox = toolBox;
+            this.canvasData = new CanvasData();
+            this.canvasController = new CanvasController(this.canvas.getCanvas(), new Renderer(this.canvas.canvasCtx, this.hitCanvas.canvasCtx), this.canvasData, this.toolBox);
             this.toolBoxController = new ToolBoxController(this.toolBox);
         }
         dispose() {

@@ -16,8 +16,8 @@ export class ToolBox {
   public selectedIdx = 0;
 
   constructor(tools: Tool[] = [
-    { type: ToolType.Brush, color: '#000', size: 1, pressureSensitivity: 50, triggerKey: 'Shift+KeyP' },
-    { type: ToolType.Eraser, triggerKey: 'Shift+KeyE' },
+    { type: ToolType.Brush, color: '#000', size: 1, pressureSensitivity: 50, triggerKey: 'KeyP' },
+    { type: ToolType.Eraser, triggerKey: 'KeyE' },
   ]) {
     this.tools = tools;
   }

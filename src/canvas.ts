@@ -2,7 +2,6 @@ interface ICanvas {
   width?: number;
   height?: number;
   pixelRatio?: number;
-  antialiased?: boolean;
 }
 
 export class Canvas {
@@ -32,9 +31,6 @@ export class Canvas {
 
     // Normalize coordinate system to use css pixels.
     this._context.scale(scale, scale);
-
-    // set antialiased for hit canvas
-    this.canvasCtx['imageSmoothingEnabled'] = config.antialiased;
 
     this._pixelRatio = window.devicePixelRatio;
     this._width = config.width;

@@ -1,9 +1,10 @@
-import { AABB, Point, Stroke } from './types';
+import { AABB, Point, Stroke, StrokeStyle, StyledPoint } from './types';
 
 export interface ICanvasData {
   add(stroke: Stroke): void;
   delete(color: string): void;
   set(stroke: Stroke): void;
+  get(color: string): Stroke;
   checkOverlap(aabb: AABB): boolean;
   getOverlap(aabb: AABB): Stroke[];
   genHitColor(): string;
@@ -30,6 +31,10 @@ export class CanvasData implements ICanvasData {
     this.strokes.set(stroke.hitColor, stroke);
   }
 
+  get(color: string): Stroke {
+    return this.strokes.get(color);
+  }
+
   checkOverlap(aabb: AABB): boolean {
     for (const stroke of this.strokes.values()) {
       if (stroke.aabb.overlap(aabb)) return true;
@@ -46,7 +51,7 @@ export class CanvasData implements ICanvasData {
   genHitColor(): string {
     let randomColor;
     do {
-      randomColor = '#' + Math.floor(Math.random() * 16777215).toString(16);
+      randomColor = '#' + (Math.random() * 0xFFFFFF << 0).toString(16).padStart(6, '0');
     } while (this.strokes.has(randomColor));
     return randomColor;
   }
@@ -55,27 +60,28 @@ export class CanvasData implements ICanvasData {
 export class StrokeBuilder {
   private stroke: Stroke;
 
-  public strokeContinue(x: number, y: number, pressure: number): Point {
+  public strokeContinue({ x, y, radius: pressure }: Point): [Point, StrokeStyle] {
     if (!this.stroke) return;
     this.stroke.x.push(x);
     this.stroke.y.push(y);
-    this.stroke.pressure.push(pressure);
+    this.stroke.radius.push(pressure);
 
     const l = this.stroke.x.length;
-    return {
+    return [{
       x: this.stroke.x[l - 2],
       y: this.stroke.y[l - 2],
-      pressure: this.stroke.pressure[l - 2],
+      radius: this.stroke.radius[l - 2],
+    }, {
       color: this.stroke.color,
       hitColor: this.stroke.hitColor,
-    };
+    }];
   }
 
-  public strokeStart({ x, y, pressure, color, hitColor }: Point): void {
+  public strokeStart({ x, y, radius: pressure, color, hitColor }: StyledPoint): void {
     this.stroke = {
       x: [x],
       y: [y],
-      pressure: [pressure],
+      radius: [pressure],
       color: color,
       hitColor: hitColor,
       aabb: null
@@ -91,6 +97,9 @@ export class StrokeBuilder {
       { x: Math.min(...this.stroke.x), y: Math.min(...this.stroke.y) },
       { x: Math.max(...this.stroke.x), y: Math.max(...this.stroke.y) },
     );
+    // expand AABB to compensate for the stroke width
+    const maxPressure = Math.max(...this.stroke.radius);
+    this.stroke.aabb.expand(maxPressure + 3);
     const stroke = this.stroke;
     this.stroke = null;
     return stroke;
