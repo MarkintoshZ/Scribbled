@@ -1,10 +1,29 @@
 import { AABB, Point, Segment, Stroke, StyledPoint, Vec2 } from './types';
 
+/** 
+ * Interface for rendering strokes, hit testing, and clearing strokes  
+ * - Note: 
+ *   The interface uses strokeStart and strokeContinue in order to improve 
+ *   the rendering performance. The goal is to render the least amount of pixels
+ *   in each time by only render the new part of the stroke when the user is 
+ *   drawing in each frame.
+ */
 export interface IRenderer {
+  /** Get hit color given the coordinates */
   getHitCvsColor(position: Vec2): string;
+  /** Clear canvas data inside of the given {@link AABB}. */
   clearRect(rect: AABB): void;
+  /** Render the start of the new stroke */
   strokeStart(point: Point): void;
+  /** 
+   * Render the continuation of a stroke given the current and the previous 
+   * point as a {@link Segment}. 
+   */
   strokeContinue(segment: Segment): void;
+  /** 
+   * Render the entire stroke from start to finish ( * Usually called for 
+   * re-rendering of strokes)
+   */
   strokeRender(stroke: Stroke): void;
 }
 

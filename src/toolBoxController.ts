@@ -13,28 +13,30 @@ export class ToolBoxController {
     document.removeEventListener('keyup', this.handleKeyUp.bind(this));
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-empty-function, @typescript-eslint/no-unused-vars
   private handleKeyDown(e: KeyboardEvent): void {
+    if (e.defaultPrevented) return;
 
-  }
-
-  private handleKeyUp(e: KeyboardEvent): void {
-    this.toolBox.tools.forEach((tool, idx) => {
+    const handled = this.toolBox.tools.some((tool, idx) => {
       if (tool.triggerKey) {
         const keys = tool.triggerKey.split('+').map(key => key.trim());
         const key = keys[keys.length - 1];
         const ctrl = keys.includes('Ctrl');
         const shift = keys.includes('Shift');
         const option = keys.includes('Option') || keys.includes('Alt');
-        console.log({ e, key, ctrl, shift, option });
         if (e.code === key &&
           e.ctrlKey === ctrl &&
           e.shiftKey === shift &&
           e.altKey === option) {
           this.toolBox.setToolByIdx(idx);
-          console.log(`set tool to ${this.toolBox.selectedTool}`);
+          return true;
         }
       }
     });
+
+    if (handled) e.preventDefault();
+
   }
+
+  // eslint-disable-next-line @typescript-eslint/no-empty-function, @typescript-eslint/no-unused-vars
+  private handleKeyUp(e: KeyboardEvent): void { }
 }

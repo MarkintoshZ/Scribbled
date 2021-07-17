@@ -29,11 +29,11 @@ export class Board {
   private toolBox: ToolBox
 
   /**
-   * Creates a new Board
+   * **Note: Remember to call dispose after use for clean up**
    * @param ref either an id or a HTMLCanvasElement
    * @param width width in pixels
    * @param height height in pixels
-   * @param toolBox ToolBox object that specifies what tools are available 
+   * @param toolBox ToolBox object that specifies what tools are available
    */
   constructor({
     container,

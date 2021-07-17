@@ -3,6 +3,9 @@ import { IRenderer } from './renderer';
 import { Tool, ToolBox, ToolType } from './tools';
 import { Point, StyledPoint } from './types';
 
+/**
+ * Handles canvas events like drawing and erasing
+ */
 export class CanvasController {
   // states
   private toolDown = false;
@@ -10,6 +13,12 @@ export class CanvasController {
   // To prevent switching tool in the middle of a stroke
   private currentTool: Tool;
 
+  /**
+   * @param canvas - canvas that is visible to the end user
+   * @param renderer - renderer that handles draw and clear calls
+   * @param boardData - container that stores all the strokes data
+   * @param toolBox - specifics tools to use
+   */
   constructor(
     private canvas: HTMLCanvasElement,
     private renderer: IRenderer,
@@ -33,7 +42,7 @@ export class CanvasController {
 
   private handlePointerDown(e: PointerEvent) {
     this.toolDown = true;
-    this.currentTool = this.toolBox.selectedTool;
+    this.currentTool = { ...this.toolBox.selectedTool };
     const point = this.createStyledPoint(e);
 
     if (this.currentTool.type === ToolType.Eraser)

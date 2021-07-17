@@ -83,9 +83,6 @@ var scribbled = (function (exports) {
         setToolByIdx(idx) {
             this.selectedIdx = idx;
         }
-        setToolByType(name) {
-            this.selectedIdx = this.tools.findIndex((v) => v.type.valueOf() == name);
-        }
         get selectedTool() {
             return this.tools[this.selectedIdx];
         }
@@ -217,7 +214,7 @@ var scribbled = (function (exports) {
         }
         handlePointerDown(e) {
             this.toolDown = true;
-            this.currentTool = this.toolBox.selectedTool;
+            this.currentTool = { ...this.toolBox.selectedTool };
             const point = this.createStyledPoint(e);
             if (this.currentTool.type === ToolType.Eraser)
                 return this.erase(point);
@@ -352,26 +349,28 @@ var scribbled = (function (exports) {
             document.removeEventListener('keyup', this.handleKeyUp.bind(this));
         }
         handleKeyDown(e) {
-        }
-        handleKeyUp(e) {
-            this.toolBox.tools.forEach((tool, idx) => {
+            if (e.defaultPrevented)
+                return;
+            const handled = this.toolBox.tools.some((tool, idx) => {
                 if (tool.triggerKey) {
                     const keys = tool.triggerKey.split('+').map(key => key.trim());
                     const key = keys[keys.length - 1];
                     const ctrl = keys.includes('Ctrl');
                     const shift = keys.includes('Shift');
                     const option = keys.includes('Option') || keys.includes('Alt');
-                    console.log({ e, key, ctrl, shift, option });
                     if (e.code === key &&
                         e.ctrlKey === ctrl &&
                         e.shiftKey === shift &&
                         e.altKey === option) {
                         this.toolBox.setToolByIdx(idx);
-                        console.log(`set tool to ${this.toolBox.selectedTool}`);
+                        return true;
                     }
                 }
             });
+            if (handled)
+                e.preventDefault();
         }
+        handleKeyUp(e) { }
     }
 
     class Board {

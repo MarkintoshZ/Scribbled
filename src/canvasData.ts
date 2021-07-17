@@ -1,12 +1,28 @@
 import { AABB, Point, Stroke, StrokeStyle, StyledPoint } from './types';
 
 export interface ICanvasData {
+  /** 
+   * Add new {@link Stroke} to store 
+   * @throws Exception if stroke with the same {@link Stroke.hitColor} already 
+   * exists
+   */
   add(stroke: Stroke): void;
+  /** Delete a {@link Stroke} given its {@link Stroke.hitColor} */
   delete(color: string): void;
+  /** Set a {@link Stroke} given its {@link Stroke.hitColor} */
   set(stroke: Stroke): void;
-  get(color: string): Stroke;
+  /** Delete {@link Stroke} given a {@link Stroke.hitColor} */
+  get(color: string): Stroke | undefined;
+  /** 
+   * Check if the given bounding box overlap with any {@link Stroke.aabb} of the 
+   * existing strokes 
+   */
   checkOverlap(aabb: AABB): boolean;
+  /**
+   * @returns all strokes with overlapping bounding box with the one supplied
+   */
   getOverlap(aabb: AABB): Stroke[];
+  /** Generate a new and unique hit color hex string */
   genHitColor(): string;
 }
 
@@ -31,7 +47,7 @@ export class CanvasData implements ICanvasData {
     this.strokes.set(stroke.hitColor, stroke);
   }
 
-  get(color: string): Stroke {
+  get(color: string): Stroke | undefined {
     return this.strokes.get(color);
   }
 

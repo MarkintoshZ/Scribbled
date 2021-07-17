@@ -14,7 +14,11 @@
     "type": "git",
     "url": "https://github.com/monatheoctocat/my_package.git"
   },
-  "keywords": ["Sketching", "Drawing", "Handwriting"],
+  "keywords": [
+    "Sketching",
+    "Drawing",
+    "Handwriting"
+  ],
   "scripts": {
     "dev": "rollup -cw"
   },
