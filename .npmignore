@@ -1,0 +1,11 @@
+.vscode
+node_modules
+src
+test
+.eslintrc.js
+.gitignore
+.npmignore
+package-lock.json
+rollup.config.js
+tsconfig.json
+yarn.lock

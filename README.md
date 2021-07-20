@@ -2,6 +2,7 @@
 
 ## Features
 - [x] Use pressure to control pen size
+- [x] Keyboard shortcuts for switching tools
 - [ ] Customizable toolbar and pen renderer
 
 ## Install
