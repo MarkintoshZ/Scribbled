@@ -1,3 +1,5 @@
+import { KeyCombination } from './keys';
+
 export enum ToolType {
   Brush = 'BRUSH',
   Eraser = 'ERASER',
@@ -15,7 +17,7 @@ export interface Tool {
   /** How much the pressure of the pen changes the radius of the stroke (in px) */
   pressureSensitivity?: number,
   /** Keyboard shortcut to switch to this tool */
-  triggerKey?: string,
+  triggerKey?: KeyCombination | KeyCombination[],
 }
 
 /**
@@ -29,7 +31,7 @@ export class ToolBox {
    * @param tools - list of tools
    */
   constructor(tools: Tool[] = [
-    { type: ToolType.Brush, color: '#000', size: 1, pressureSensitivity: 50, triggerKey: 'KeyP' },
+    { type: ToolType.Brush, color: '#000', size: 1, pressureSensitivity: 50, triggerKey: ['KeyP', 'KeyB'] },
     { type: ToolType.Eraser, triggerKey: 'KeyE' },
   ]) {
     this.tools = tools;

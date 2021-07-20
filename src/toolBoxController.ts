@@ -1,3 +1,4 @@
+import { matchKey } from './keys';
 import { ToolBox } from './tools';
 
 export class ToolBoxController {
@@ -18,15 +19,7 @@ export class ToolBoxController {
 
     const handled = this.toolBox.tools.some((tool, idx) => {
       if (tool.triggerKey) {
-        const keys = tool.triggerKey.split('+').map(key => key.trim());
-        const key = keys[keys.length - 1];
-        const ctrl = keys.includes('Ctrl');
-        const shift = keys.includes('Shift');
-        const option = keys.includes('Option') || keys.includes('Alt');
-        if (e.code === key &&
-          e.ctrlKey === ctrl &&
-          e.shiftKey === shift &&
-          e.altKey === option) {
+        if (matchKey(e, tool.triggerKey)) {
           this.toolBox.setToolByIdx(idx);
           return true;
         }
@@ -34,7 +27,6 @@ export class ToolBoxController {
     });
 
     if (handled) e.preventDefault();
-
   }
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function, @typescript-eslint/no-unused-vars

@@ -74,7 +74,7 @@ var scribbled = (function (exports) {
     })(ToolType || (ToolType = {}));
     class ToolBox {
         constructor(tools = [
-            { type: ToolType.Brush, color: '#000', size: 1, pressureSensitivity: 50, triggerKey: 'KeyP' },
+            { type: ToolType.Brush, color: '#000', size: 1, pressureSensitivity: 50, triggerKey: ['KeyP', 'KeyB'] },
             { type: ToolType.Eraser, triggerKey: 'KeyE' },
         ]) {
             this.selectedIdx = 0;
@@ -338,6 +338,30 @@ var scribbled = (function (exports) {
         }
     }
 
+    const matchKey = (e, key) => {
+        if (typeof key == 'string') {
+            key = [key];
+        }
+        return key.some((k) => {
+            const ctrl = k.includes('Ctrl');
+            const shift = k.includes('Shift');
+            const alt = k.includes('Alt');
+            const meta = k.includes('Meta');
+            if (['Ctrl', 'Shift', 'Alt', 'Meta'].includes(k)) {
+                return e.ctrlKey == ctrl &&
+                    e.shiftKey == shift &&
+                    e.altKey == alt &&
+                    e.metaKey == meta;
+            }
+            const code = k.split('+').pop();
+            return e.ctrlKey == ctrl &&
+                e.shiftKey == shift &&
+                e.altKey == alt &&
+                e.metaKey == meta &&
+                e.code == code;
+        });
+    };
+
     class ToolBoxController {
         constructor(toolBox) {
             this.toolBox = toolBox;
@@ -353,15 +377,7 @@ var scribbled = (function (exports) {
                 return;
             const handled = this.toolBox.tools.some((tool, idx) => {
                 if (tool.triggerKey) {
-                    const keys = tool.triggerKey.split('+').map(key => key.trim());
-                    const key = keys[keys.length - 1];
-                    const ctrl = keys.includes('Ctrl');
-                    const shift = keys.includes('Shift');
-                    const option = keys.includes('Option') || keys.includes('Alt');
-                    if (e.code === key &&
-                        e.ctrlKey === ctrl &&
-                        e.shiftKey === shift &&
-                        e.altKey === option) {
+                    if (matchKey(e, tool.triggerKey)) {
                         this.toolBox.setToolByIdx(idx);
                         return true;
                     }
