@@ -20,7 +20,8 @@
   "files": [
     "dist/",
     "lib/",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "keywords": [
     "Sketching",
