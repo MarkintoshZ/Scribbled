@@ -4,7 +4,10 @@ var scribbled = (function (exports) {
     class Canvas {
         constructor(config) {
             this._canvas = document.createElement('canvas');
-            this._context = this._canvas.getContext('2d');
+            const ctx = this._canvas.getContext('2d');
+            if (!ctx)
+                throw new Error('Cannot get canvas context');
+            this._context = ctx;
             this._canvas.style.padding = '0';
             this._canvas.style.margin = '0';
             this._canvas.style.background = 'transparent';
@@ -137,14 +140,16 @@ var scribbled = (function (exports) {
             return this.strokes.get(color);
         }
         checkOverlap(aabb) {
+            var _a;
             for (const stroke of this.strokes.values()) {
-                if (stroke.aabb.overlap(aabb))
+                if ((_a = stroke.aabb) === null || _a === void 0 ? void 0 : _a.overlap(aabb))
                     return true;
             }
+            return false;
         }
         getOverlap(aabb) {
             return [...this.strokes.values()]
-                .filter((stroke) => stroke.aabb.overlap(aabb));
+                .filter((stroke) => { var _a; return (_a = stroke.aabb) === null || _a === void 0 ? void 0 : _a.overlap(aabb); });
         }
         genHitColor() {
             let randomColor;
@@ -155,9 +160,12 @@ var scribbled = (function (exports) {
         }
     }
     class StrokeBuilder {
+        constructor() {
+            this.stroke = null;
+        }
         strokeContinue({ x, y, radius: pressure }) {
             if (!this.stroke)
-                return;
+                throw new Error('Cannot continue stroke before strokeStart is called');
             this.stroke.x.push(x);
             this.stroke.y.push(y);
             this.stroke.radius.push(pressure);
@@ -183,7 +191,7 @@ var scribbled = (function (exports) {
         }
         strokeComplete() {
             if (this.stroke === null)
-                throw new Error('Cannot complete stroke before stroke start is called');
+                throw new Error('Cannot complete stroke before strokeStart is called');
             this.stroke.aabb = new AABB({ x: Math.min(...this.stroke.x), y: Math.min(...this.stroke.y) }, { x: Math.max(...this.stroke.x), y: Math.max(...this.stroke.y) });
             const maxPressure = Math.max(...this.stroke.radius);
             this.stroke.aabb.expand(maxPressure + 3);
@@ -199,7 +207,7 @@ var scribbled = (function (exports) {
             this.renderer = renderer;
             this.boardData = boardData;
             this.toolBox = toolBox;
-            this.toolDown = false;
+            this.currentTool = null;
             this.strokeConstructor = new StrokeBuilder();
             this.canvas.addEventListener('pointerdown', this.handlePointerDown.bind(this));
             this.canvas.addEventListener('pointerup', this.handlePointerUpAndLeave.bind(this));
@@ -213,16 +221,15 @@ var scribbled = (function (exports) {
             this.canvas.removeEventListener('pointerleave', this.handlePointerUpAndLeave.bind(this));
         }
         handlePointerDown(e) {
-            this.toolDown = true;
-            this.currentTool = { ...this.toolBox.selectedTool };
-            const point = this.createStyledPoint(e);
+            this.currentTool = Object.assign({}, this.toolBox.selectedTool);
             if (this.currentTool.type === ToolType.Eraser)
-                return this.erase(point);
+                return this.erase(this.createPoint(e));
+            const point = this.createStyledPoint(e);
             this.strokeConstructor.strokeStart(point);
             this.renderer.strokeStart(point);
         }
         handlePointerMove(e) {
-            if (!this.toolDown)
+            if (this.currentTool === null)
                 return;
             const point = this.createPoint(e);
             if (this.currentTool.type === ToolType.Eraser)
@@ -231,20 +238,22 @@ var scribbled = (function (exports) {
             this.renderer.strokeContinue({ from: lastPoint, to: point, color, hitColor });
         }
         handlePointerUpAndLeave(e) {
-            if (!this.toolDown)
+            if (this.currentTool === null)
                 return;
             if (this.currentTool.type !== ToolType.Eraser) {
                 this.handlePointerMove(e);
                 this.boardData.add(this.strokeConstructor.strokeComplete());
             }
-            this.toolDown = false;
             this.currentTool = null;
         }
         erase(point) {
             const color = this.renderer.getHitCvsColor(point);
             if (!this.boardData.get(color))
                 return;
-            const aabb = this.boardData.get(color).aabb;
+            const strokeToErase = this.boardData.get(color);
+            if (!(strokeToErase === null || strokeToErase === void 0 ? void 0 : strokeToErase.aabb))
+                throw new Error('Cannot find stroke to erase or its bounding box is null');
+            const aabb = strokeToErase.aabb;
             this.renderer.clearRect(aabb);
             this.boardData.delete(color);
             const strokesNeedRepainting = this.boardData.getOverlap(aabb);
@@ -258,14 +267,15 @@ var scribbled = (function (exports) {
             };
         }
         createStyledPoint(e) {
-            return {
-                ...this.createPoint(e),
-                color: this.currentTool.color,
-                hitColor: this.boardData.genHitColor(),
-            };
+            var _a;
+            if (!((_a = this.currentTool) === null || _a === void 0 ? void 0 : _a.color))
+                throw new Error('current tool does not have a color property');
+            return Object.assign(Object.assign({}, this.createPoint(e)), { color: this.currentTool.color, hitColor: this.boardData.genHitColor() });
         }
         calculatePressure(rawPressure) {
-            return rawPressure * this.currentTool.pressureSensitivity + this.currentTool.size;
+            var _a, _b, _c, _d;
+            return rawPressure * ((_b = (_a = this.currentTool) === null || _a === void 0 ? void 0 : _a.pressureSensitivity) !== null && _b !== void 0 ? _b : 1)
+                + ((_d = (_c = this.currentTool) === null || _c === void 0 ? void 0 : _c.size) !== null && _d !== void 0 ? _d : 1);
         }
     }
 
@@ -289,7 +299,7 @@ var scribbled = (function (exports) {
         }
         strokeStart(point) {
             this.drawCircle(this.canvasCtx, point.color, point);
-            this.drawCircle(this.hitCanvasCtx, point.hitColor, { ...point, radius: Math.max(2, point.radius) });
+            this.drawCircle(this.hitCanvasCtx, point.hitColor, Object.assign(Object.assign({}, point), { radius: Math.max(2, point.radius) }));
         }
         drawCircle(ctx, color, point) {
             ctx.fillStyle = color;
@@ -318,7 +328,6 @@ var scribbled = (function (exports) {
             ctx.fill();
         }
         strokeRender({ x, y, radius: pressure, color, hitColor }) {
-            console.log('render stroke!!');
             this.strokeStart({ x: x[0], y: y[0], radius: pressure[0], color, hitColor });
             for (let i = 0; i < x.length; i++) {
                 this.strokeContinue({
@@ -418,7 +427,7 @@ var scribbled = (function (exports) {
     }
 
     exports.Board = Board;
-    exports.default = Board;
+    exports['default'] = Board;
 
     Object.defineProperty(exports, '__esModule', { value: true });
 

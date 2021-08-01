@@ -1,8 +1,10 @@
 {
   "name": "scribbled",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A Modular and Customizable Sketchpad on the Web",
-  "main": "index.ts",
+  "main": "dist/scribbled.js",
+  "module": "lib/index.js",
+  "types": "lib/index.d.ts",
   "author": {
     "name": "Mark Zhang",
     "email": "markintoshzzz@gmail.com",
@@ -10,17 +12,25 @@
   },
   "license": "MIT",
   "private": false,
+  "homepage": "https://github.com/MarkintoshZ/Scribbled",
   "repository": {
     "type": "git",
     "url": "https://github.com/MarkintoshZ/Scribbled"
   },
+  "files": [
+    "dist/",
+    "lib/",
+    "README.md"
+  ],
   "keywords": [
     "Sketching",
     "Drawing",
     "Handwriting"
   ],
   "scripts": {
-    "dev": "rollup -cw"
+    "start": "rollup -cw",
+    "build": "tsc -p tsconfig.json && rollup -c",
+    "prepublish": "yarn run build"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^8.1.0",

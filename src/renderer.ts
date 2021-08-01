@@ -142,8 +142,6 @@ export class Renderer implements IRenderer {
   }
 
   public strokeRender({ x, y, radius: pressure, color, hitColor }: Stroke): void {
-    // TODO: render whole Stroke
-    console.log('render stroke!!');
     this.strokeStart({ x: x[0], y: y[0], radius: pressure[0], color, hitColor });
     for (let i = 0; i < x.length; i++) {
       this.strokeContinue({

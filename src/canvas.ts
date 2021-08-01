@@ -1,19 +1,21 @@
 interface ICanvas {
-  width?: number;
-  height?: number;
+  width: number;
+  height: number;
   pixelRatio?: number;
 }
 
 export class Canvas {
   private _canvas: HTMLCanvasElement;
-  private _context: CanvasRenderingContext2D
+  private _context: CanvasRenderingContext2D;
   private _pixelRatio: number;
   private _width: number;
   private _height: number;
 
   constructor(config: ICanvas) {
     this._canvas = document.createElement('canvas');
-    this._context = this._canvas.getContext('2d');
+    const ctx = this._canvas.getContext('2d');
+    if (!ctx) throw new Error('Cannot get canvas context');
+    this._context = ctx;
 
     // set inline styles
     this._canvas.style.padding = '0';

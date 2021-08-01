@@ -16,7 +16,9 @@ export default {
       plugins: [terser()]
     },
   ],
-  plugins: [typescript()],
+  plugins: [
+    typescript({ tsconfig: 'tsconfig-dist.json' }),
+  ],
   watch: {
     include: ['src/**/*']
   }

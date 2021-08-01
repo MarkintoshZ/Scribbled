@@ -53,14 +53,15 @@ export class CanvasData implements ICanvasData {
 
   checkOverlap(aabb: AABB): boolean {
     for (const stroke of this.strokes.values()) {
-      if (stroke.aabb.overlap(aabb)) return true;
+      if (stroke.aabb?.overlap(aabb)) return true;
     }
+    return false;
   }
 
   getOverlap(aabb: AABB): Stroke[] {
     // ! need testing
     return [...this.strokes.values()]
-      .filter((stroke) => stroke.aabb.overlap(aabb));
+      .filter((stroke) => stroke.aabb?.overlap(aabb));
   }
 
   /** generate random color that other strokes are not using for hitCanvas */
@@ -74,10 +75,11 @@ export class CanvasData implements ICanvasData {
 }
 
 export class StrokeBuilder {
-  private stroke: Stroke;
+  private stroke: Stroke | null = null;
 
   public strokeContinue({ x, y, radius: pressure }: Point): [Point, StrokeStyle] {
-    if (!this.stroke) return;
+    if (!this.stroke)
+      throw new Error('Cannot continue stroke before strokeStart is called');
     this.stroke.x.push(x);
     this.stroke.y.push(y);
     this.stroke.radius.push(pressure);
@@ -106,9 +108,7 @@ export class StrokeBuilder {
 
   public strokeComplete(): Stroke {
     if (this.stroke === null)
-      throw new Error('Cannot complete stroke before stroke start is called');
-    // TODO: calculate AABB
-    // calculate max and min x
+      throw new Error('Cannot complete stroke before strokeStart is called');
     this.stroke.aabb = new AABB(
       { x: Math.min(...this.stroke.x), y: Math.min(...this.stroke.y) },
       { x: Math.max(...this.stroke.x), y: Math.max(...this.stroke.y) },

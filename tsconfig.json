@@ -1,13 +1,20 @@
 {
   "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
+    "target": "ES2015",
+    "module": "ES2020",
+    "lib": [
+      "ESNext", 
+      "DOM"
+    ],
+    "strict": true,
     "noImplicitAny": true,
-    "removeComments": true,
+    "esModuleInterop": true,
     "preserveConstEnums": true,
-    "sourceMap": true,
+    "declaration": true,
     "rootDir": "src",
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "./lib",
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "**/*.spec.ts"]
